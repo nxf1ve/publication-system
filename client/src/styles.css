@@ -1,0 +1,2 @@
+:root { font-family: system-ui, sans-serif; color: #17202a; background: #f5f7fa; }
+body { margin: 0; } nav { display: flex; gap: 1rem; padding: 1rem 2rem; background: #1f4e79; } nav a { color: white; text-decoration: none; } main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; } input { padding: .6rem; width: min(100%, 420px); } li { list-style: none; background: white; margin: 1rem 0; padding: 1rem; border-radius: 6px; }
