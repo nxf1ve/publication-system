@@ -29,7 +29,11 @@ jobs:
           node-version: 24
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate commit messages
+        if: github.event_name == 'pull_request'
+        run: npx --no -- commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
 
       - name: Run linter when configured
         run: npm run lint --if-present
@@ -46,4 +50,3 @@ jobs:
           name: client-build
           path: client/dist
           if-no-files-found: error
-
