@@ -50,3 +50,11 @@ jobs:
           name: server-test-reports
           path: server/target/surefire-reports
           if-no-files-found: ignore
+
+      - name: Upload server coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-coverage
+          path: server/target/site/jacoco
+          if-no-files-found: ignore
