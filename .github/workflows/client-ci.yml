@@ -43,6 +43,14 @@ jobs:
       - name: Run tests when configured
         run: npm test --if-present -- --coverage
 
+      - name: Upload client coverage
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-coverage
+          path: client/coverage
+          if-no-files-found: ignore
+
       - name: Build client
         run: npm run build
 
