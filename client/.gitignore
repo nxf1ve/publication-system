@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Vite production build
+dist/
+
+# Test and coverage output
+coverage/
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Logs and local caches
+*.log
+.eslintcache
+.npm/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
