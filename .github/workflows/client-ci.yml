@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: client-ci-${{ github.workflow }}-${{ github.ref }}
@@ -37,11 +38,13 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npx --no -- commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
 
-      - name: Run linter when configured
+      - name: Run linter
+        id: client_lint
         run: npm run lint
 
-      - name: Run tests when configured
-        run: npm test --if-present -- --coverage
+      - name: Run tests and collect JUnit metrics
+        id: client_tests
+        run: npm test --if-present
 
       - name: Upload client coverage
         if: always()
@@ -51,8 +54,50 @@ jobs:
           path: client/coverage
           if-no-files-found: ignore
 
+      - name: Publish client JUnit report
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: Client tests
+          path: client/test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
       - name: Build client
+        id: client_build
         run: npm run build
+
+      - name: Add client quality metrics to job summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          junit = Path("client/test-results/junit.xml")
+          summary = Path("client/coverage/coverage-summary.json")
+          rows = []
+          if junit.exists():
+              root = ET.parse(junit).getroot()
+              total = int(root.attrib.get("tests", 0))
+              failures = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
+              skipped = int(root.attrib.get("disabled", 0))
+              rows.append(("Client tests (JUnit)", f"{total - failures - skipped}/{total} passed"))
+          if summary.exists():
+              total = json.loads(summary.read_text())["total"]
+              rows.append(("Client line coverage", f"{total['covered']}/{total['total']} ({total['pct']}%)"))
+          rows.append(("ESLint", "${{ steps.client_lint.outcome }}"))
+          rows.append(("Client build", "${{ steps.client_build.outcome }}"))
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write("## Automated client quality metrics\n\n")
+              out.write("| Metric | Result |\n|---|---|\n")
+              for name, value in rows:
+                  out.write(f"| {name} | {value} |\n")
+          PY
 
       - name: Upload client build
         uses: actions/upload-artifact@v7
@@ -60,3 +105,11 @@ jobs:
           name: client-build
           path: client/dist
           if-no-files-found: error
+
+      - name: Upload client test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-test-results
+          path: client/test-results
+          if-no-files-found: ignore

@@ -6,6 +6,7 @@ dist/
 
 # Test and coverage output
 coverage/
+test-results/
 
 # Local environment files
 .env

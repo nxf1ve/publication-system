@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: server-ci-${{ github.workflow }}-${{ github.ref }}
@@ -34,7 +35,60 @@ jobs:
         run: mvn --batch-mode dependency:resolve
 
       - name: Run checks and tests
+        id: server_verify
         run: mvn --batch-mode verify
+
+      - name: Publish server JUnit report
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: Server tests
+          path: server/target/surefire-reports/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Add server quality metrics to job summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          reports = list(Path("server/target/surefire-reports").glob("TEST-*.xml"))
+          total = failures = errors = skipped = 0
+          for report in reports:
+              suite = ET.parse(report).getroot()
+              total += int(suite.attrib.get("tests", 0))
+              failures += int(suite.attrib.get("failures", 0))
+              errors += int(suite.attrib.get("errors", 0))
+              skipped += int(suite.attrib.get("skipped", 0))
+
+          coverage = "not generated"
+          csv = Path("server/target/site/jacoco/jacoco.csv")
+          if csv.exists():
+              header, data = csv.read_text().splitlines()[0], csv.read_text().splitlines()[1:]
+              counters = {"INSTRUCTION": [0, 0]}
+              for line in data:
+                  parts = line.split(",")
+                  for index, counter in enumerate(("INSTRUCTION", "BRANCH", "LINE", "COMPLEXITY", "METHOD", "CLASS")):
+                      missed, covered = int(parts[3 + index * 2]), int(parts[4 + index * 2])
+                      counters.setdefault(counter, [0, 0])
+                      counters[counter][0] += missed
+                      counters[counter][1] += covered
+              missed, covered = counters["LINE"]
+              coverage = f"{covered}/{missed + covered} ({covered * 100 / (missed + covered):.2f}%)" if missed + covered else "0%"
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write("## Automated server quality metrics\n\n")
+              out.write("| Metric | Result |\n|---|---|\n")
+              out.write(f"| Server tests (JUnit) | {total - failures - errors - skipped}/{total} passed |\n")
+              out.write(f"| Server line coverage (JaCoCo) | {coverage} |\n")
+              out.write(f"| Maven verify (including Checkstyle) | ${{{{ steps.server_verify.outcome }}}} |\n")
+              out.write(f"| Test suites | {len(reports)} |\n")
+              out.write(f"| Skipped tests | {skipped} |\n")
+          PY
 
       - name: Upload server artifact
         uses: actions/upload-artifact@v7
