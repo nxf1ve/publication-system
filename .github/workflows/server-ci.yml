@@ -50,6 +50,8 @@ jobs:
       - name: Add server quality metrics to job summary
         if: always()
         shell: bash
+        env:
+          SERVER_VERIFY_OUTCOME: ${{ steps.server_verify.outcome }}
         run: |
           python - <<'PY'
           import os
@@ -85,7 +87,7 @@ jobs:
               out.write("| Metric | Result |\n|---|---|\n")
               out.write(f"| Server tests (JUnit) | {total - failures - errors - skipped}/{total} passed |\n")
               out.write(f"| Server line coverage (JaCoCo) | {coverage} |\n")
-              out.write(f"| Maven verify (including Checkstyle) | ${{{{ steps.server_verify.outcome }}}} |\n")
+              out.write(f"| Maven verify (including Checkstyle) | {os.environ.get('SERVER_VERIFY_OUTCOME', 'unknown')} |\n")
               out.write(f"| Test suites | {len(reports)} |\n")
               out.write(f"| Skipped tests | {skipped} |\n")
           PY
