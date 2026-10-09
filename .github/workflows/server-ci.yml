@@ -58,7 +58,7 @@ jobs:
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
-          reports = list(Path("server/target/surefire-reports").glob("TEST-*.xml"))
+          reports = list(Path("target/surefire-reports").glob("TEST-*.xml"))
           total = failures = errors = skipped = 0
           for report in reports:
               suite = ET.parse(report).getroot()
@@ -66,9 +66,10 @@ jobs:
               failures += int(suite.attrib.get("failures", 0))
               errors += int(suite.attrib.get("errors", 0))
               skipped += int(suite.attrib.get("skipped", 0))
+          test_time = sum(float(ET.parse(report).getroot().attrib.get("time", 0)) for report in reports)
 
           coverage = "not generated"
-          csv = Path("server/target/site/jacoco/jacoco.csv")
+          csv = Path("target/site/jacoco/jacoco.csv")
           if csv.exists():
               header, data = csv.read_text().splitlines()[0], csv.read_text().splitlines()[1:]
               counters = {"INSTRUCTION": [0, 0]}
@@ -86,6 +87,7 @@ jobs:
               out.write("## Automated server quality metrics\n\n")
               out.write("| Metric | Result |\n|---|---|\n")
               out.write(f"| Server tests (JUnit) | {total - failures - errors - skipped}/{total} passed |\n")
+              out.write(f"| Server test execution time | {test_time:.3f} s |\n")
               out.write(f"| Server line coverage (JaCoCo) | {coverage} |\n")
               out.write(f"| Maven verify (including Checkstyle) | {os.environ.get('SERVER_VERIFY_OUTCOME', 'unknown')} |\n")
               out.write(f"| Test suites | {len(reports)} |\n")
