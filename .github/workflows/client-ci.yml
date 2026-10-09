@@ -75,21 +75,34 @@ jobs:
           import json
           import os
           import xml.etree.ElementTree as ET
+          import time
           from pathlib import Path
 
           junit = Path("test-results/junit.xml")
           summary = Path("coverage/coverage-summary.json")
           rows = []
+          tests = "report not generated"
+          test_time = "report not generated"
           if junit.exists():
               root = ET.parse(junit).getroot()
-              total = int(root.attrib.get("tests", 0))
-              failures = int(root.attrib.get("failures", 0)) + int(root.attrib.get("errors", 0))
-              skipped = int(root.attrib.get("disabled", 0))
-              rows.append(("Client tests (JUnit)", f"{total - failures - skipped}/{total} passed"))
-              rows.append(("Client test execution time", f"{float(root.attrib.get('time', 0)):.3f} s"))
+              suites = [root] if root.tag == "testsuite" else root.findall(".//testsuite")
+              total = failures = errors = skipped = 0
+              seconds = 0.0
+              for suite in suites:
+                  total += int(suite.attrib.get("tests", 0))
+                  failures += int(suite.attrib.get("failures", 0))
+                  errors += int(suite.attrib.get("errors", 0))
+                  skipped += int(suite.attrib.get("skipped", suite.attrib.get("disabled", 0)))
+                  seconds += float(suite.attrib.get("time", 0))
+              tests = f"{total - failures - errors - skipped}/{total} passed"
+              test_time = f"{seconds:.3f} s"
           if summary.exists():
-              total = json.loads(summary.read_text())["total"]
-              rows.append(("Client line coverage", f"{total['covered']}/{total['total']} ({total['pct']}%)"))
+              lines = json.loads(summary.read_text())["total"]["lines"]
+              rows.append(("Client line coverage", f"{lines['covered']}/{lines['total']} ({lines['pct']}%)"))
+          rows.append(("Client tests (JUnit)", tests))
+          rows.append(("Client test execution time", test_time))
+          rows.append(("Test report", "generated" if junit.exists() else "not generated"))
+          rows.append(("Coverage report", "generated" if summary.exists() else "not generated"))
           rows.append(("ESLint", "${{ steps.client_lint.outcome }}"))
           rows.append(("Client build", "${{ steps.client_build.outcome }}"))
 

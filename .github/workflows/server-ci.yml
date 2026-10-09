@@ -55,6 +55,7 @@ jobs:
         run: |
           python - <<'PY'
           import os
+          import csv as csv_module
           import xml.etree.ElementTree as ET
           from pathlib import Path
 
@@ -71,17 +72,12 @@ jobs:
           coverage = "not generated"
           csv = Path("target/site/jacoco/jacoco.csv")
           if csv.exists():
-              header, data = csv.read_text().splitlines()[0], csv.read_text().splitlines()[1:]
-              counters = {"INSTRUCTION": [0, 0]}
-              for line in data:
-                  parts = line.split(",")
-                  for index, counter in enumerate(("INSTRUCTION", "BRANCH", "LINE", "COMPLEXITY", "METHOD", "CLASS")):
-                      missed, covered = int(parts[3 + index * 2]), int(parts[4 + index * 2])
-                      counters.setdefault(counter, [0, 0])
-                      counters[counter][0] += missed
-                      counters[counter][1] += covered
-              missed, covered = counters["LINE"]
-              coverage = f"{covered}/{missed + covered} ({covered * 100 / (missed + covered):.2f}%)" if missed + covered else "0%"
+              with csv.open(newline="", encoding="utf-8") as source:
+                  rows = list(csv_module.DictReader(source))
+              if rows:
+                  missed = sum(int(row["LINE_MISSED"]) for row in rows)
+                  covered = sum(int(row["LINE_COVERED"]) for row in rows)
+                  coverage = f"{covered}/{missed + covered} ({covered * 100 / (missed + covered):.2f}%)" if missed + covered else "0%"
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
               out.write("## Automated server quality metrics\n\n")
