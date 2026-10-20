@@ -36,7 +36,15 @@ jobs:
 
       - name: Run checks and tests
         id: server_verify
-        run: mvn --batch-mode verify
+        run: python ../.github/scripts/measure_build.py --label Server --artifacts 'target/*.jar' --output build-metrics.json -- mvn --batch-mode verify
+
+      - name: Upload server build metrics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-build-metrics
+          path: server/build-metrics.json
+          if-no-files-found: ignore
 
       - name: Publish server JUnit report
         if: always()

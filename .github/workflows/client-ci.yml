@@ -65,7 +65,15 @@ jobs:
 
       - name: Build client
         id: client_build
-        run: npm run build
+        run: python ../.github/scripts/measure_build.py --label Client --artifacts 'dist/**/*' --output build-metrics.json -- npm run build
+
+      - name: Upload client build metrics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-build-metrics
+          path: client/build-metrics.json
+          if-no-files-found: ignore
 
       - name: Add client quality metrics to job summary
         if: always()
