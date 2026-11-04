@@ -8,7 +8,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
-/** JWT building block; wire it into an authentication filter when auth endpoints are implemented. */
+/** Issues signed access tokens and validates their signature and expiration. */
 @Service
 public class JwtService {
     private final SecretKey key;

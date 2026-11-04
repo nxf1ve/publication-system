@@ -1,5 +1,7 @@
 ﻿:root { font-family: Arial, sans-serif; color: #18384d; background: #f3f6f7; }
 * { box-sizing: border-box; }
+fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+button:disabled { opacity: .6; cursor: wait; }
 body { margin: 0; }
 nav { display: flex; flex-wrap: wrap; gap: 24px; padding: 18px 32px; background: #fff; border-bottom: 1px solid #e1e9ec; }
 nav a { color: #137d78; text-decoration: none; }
