@@ -16,6 +16,12 @@ import java.time.Instant;
 public class Publication {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Long id;
     @Column(nullable = false) private String title;
+    private String authors;
+    @Column(name = "publication_year") private Integer year;
+    private String type;
+    private String department;
+    private String owner;
+    private String status = "На проверке";
     @Column(columnDefinition = "text") private String content;
     @ManyToOne(fetch = FetchType.LAZY, optional = false) private User author;
     @Column(nullable = false, updatable = false) private Instant createdAt = Instant.now();
