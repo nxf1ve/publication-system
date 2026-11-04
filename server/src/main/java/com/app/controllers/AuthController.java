@@ -33,7 +33,7 @@ public class AuthController {
     }
 
     public record Credentials(
-            @NotBlank @Pattern(regexp = "[a-zA-Z0-9_.-]{3,50}") String username,
+            @NotBlank @Pattern(regexp = "[a-zA-Z0-9_.@+-]{3,50}") String username,
             @NotBlank @Size(min = 8, max = 72) String password) { }
     public record Account(Long id, String username, String role) { }
     public record Session(String accessToken, Account user) { }

@@ -11,7 +11,7 @@ test('registers, restores session and logs out; USER cannot open admin', async (
   await page.goto('/profile');
   await expect(page).toHaveURL(/\/login$/);
   await page.getByRole('button', { name: 'Создать аккаунт' }).click();
-  await page.getByLabel(/Логин/).fill('employee');
+  await page.getByLabel(/Логин/).fill('employee@example.com');
   await page.getByLabel(/Пароль/).fill('password123');
   await page.getByRole('button', { name: 'Зарегистрироваться', exact: true }).click();
   await expect(page).toHaveURL(/\/profile$/);

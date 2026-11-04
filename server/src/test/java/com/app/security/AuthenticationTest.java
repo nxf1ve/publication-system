@@ -69,7 +69,7 @@ class AuthenticationTest {
             return saved;
         });
         mvc.perform(post("/api/auth/register").contentType("application/json")
-                .content("{\"username\":\"newuser\",\"password\":\"password123\",\"role\":\"ADMIN\"}"))
+                .content("{\"username\":\"newuser@example.com\",\"password\":\"password123\",\"role\":\"ADMIN\"}"))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.user.role").value("USER"));
         when(users.existsByUsername("newuser")).thenReturn(true);
         mvc.perform(post("/api/auth/register").contentType("application/json")

@@ -24,11 +24,11 @@ export default function Auth({ onAuthenticated }) {
   return <main><section className="panel">
     <h1>{register ? 'Регистрация' : 'Вход в систему'}</h1>
     <form onSubmit={submit}>
-      <div className="form-grid">
-        <label htmlFor="username">Логин (3–50: латиница, цифры, _, ., -)
-          <input id="username" autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} required pattern="[a-zA-Z0-9_.\\-]{3,50}" maxLength={50} />
+      <div className="auth-fields">
+        <label htmlFor="username">Логин
+          <input id="username" autoComplete="username" value={username} onChange={e => setUsername(e.target.value)} required pattern={'[a-zA-Z0-9_.@+\\-]{3,50}'} maxLength={50} />
         </label>
-        <label htmlFor="password">Пароль (8–72 символа)
+        <label htmlFor="password">Пароль
           <input id="password" type="password" autoComplete={register ? 'new-password' : 'current-password'} value={password} onChange={e => setPassword(e.target.value)} required minLength={8} maxLength={72} />
         </label>
       </div>
