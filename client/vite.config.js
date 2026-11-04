@@ -5,6 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: { port: 5173 },
   test: {
+    include: ['src/**/*.test.{js,jsx}'],
     reporters: ['default', 'junit'],
     outputFile: { junit: 'test-results/junit.xml' },
     coverage: {

@@ -29,4 +29,12 @@ describe('prototype storage', () => {
       expect(readItems()).toHaveLength(3);
     });
   });
+  it('uses initial records when reading storage fails', () => {
+    localStorage.getItem = () => { throw new Error('Access denied'); };
+    expect(readItems()).toHaveLength(3);
+  });
+  it('propagates write failures so the caller can report unsaved changes', () => {
+    localStorage.setItem = () => { throw new Error('Quota exceeded'); };
+    expect(() => saveItems([])).toThrow('Quota exceeded');
+  });
 });

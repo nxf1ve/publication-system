@@ -19,4 +19,10 @@ describe('publication validation', () => {
   it('rejects unknown publication types', () => {
     expect(publicationSchema.safeParse({ ...valid, type: 'Другое' }).success).toBe(false);
   });
+  it.each([1900, new Date().getFullYear() + 1])('accepts boundary year %s', year => {
+    expect(publicationSchema.parse({ ...valid, year }).year).toBe(year);
+  });
+  it.each([3, 200])('accepts boundary title length %s', length => {
+    expect(publicationSchema.parse({ ...valid, title: 'а'.repeat(length) }).title).toHaveLength(length);
+  });
 });

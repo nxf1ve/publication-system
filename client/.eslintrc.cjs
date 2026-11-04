@@ -13,6 +13,13 @@ module.exports = {
   settings: {
     react: { version: 'detect' },
   },
+  overrides: [{
+    files: ['playwright.config.js', 'e2e/**/*.js'],
+    env: { node: true },
+    rules: {
+      'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+    },
+  }],
   rules: {
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
