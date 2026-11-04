@@ -69,8 +69,10 @@ GitHub Actions запускает клиентские, серверные и б
 сервере; см. [postgres.md](postgres.md). Профиль показывает сведения сессии,
 админ-панель остается заготовкой.
 
-Файлы `Lab6_report_completed.docx`, `Lab7_report_completed.docx` и снимки
-в `docs/lab7` фиксируют предыдущий этап прототипа. Актуальное число тестов
+Документы `Lab6_report_completed.docx` и `Lab7_report_completed.docx`
+хранятся локально в `../publication-system-reports/` и исключены из Git.
+Генератор `docs/lab7/create_report.py` сохраняет результат туда же.
+Снимки в `docs/lab7` фиксируют предыдущий этап прототипа. Актуальное число тестов
 и покрытие нужно смотреть в результатах текущего прогона и GitHub Actions.
 
 ## Git Flow

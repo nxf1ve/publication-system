@@ -3,3 +3,20 @@ __pycache__/
 build-metrics.json
 server/target-*.log
 ~$*
+
+# Generated dependencies, caches, builds and test results (all subdirectories)
+.npm/
+.cache/
+dist/
+coverage/
+playwright-report/
+test-results/
+target/
+*.log
+
+# Word reports are stored in ../publication-system-reports/
+*.docx
+*.doc
+*.docm
+*.dotx
+*.dotm
