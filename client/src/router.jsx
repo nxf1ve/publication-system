@@ -32,9 +32,10 @@ export default function Router() {
   return <BrowserRouter>
     <nav>
       <Link to="/">Каталог</Link>
-      {user && <Link to="/profile">Профиль</Link>}
       {user?.role === 'ADMIN' && <Link to="/admin">Администрирование</Link>}
-      {user ? <><span>{user.username}</span><button type="button" onClick={logout}>Выйти</button></> : <Link to="/login">Войти</Link>}
+      <div className="nav-account">
+        {user ? <><Link className="nav-username" to="/profile">{user.username}</Link><button type="button" onClick={logout}>Выйти</button></> : <Link to="/login">Войти</Link>}
+      </div>
     </nav>
     {error && <p role="alert">{error}</p>}
     {loading ? <main><p role="status">Проверка сессии…</p></main> : <Routes>
