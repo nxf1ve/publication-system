@@ -15,4 +15,5 @@ mvn spring-boot:run
 ```
 
 Connection values can be overridden with `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` and `SERVER_PORT`.
-The current REST base path is `/api/publications`; authentication endpoints can be added under `/api/auth`.
+The current REST base path is `/api/publications`. Authentication is available under `/api/auth`.
+See [implementation plan](../docs/implementation-plan.md) for endpoints, setup and remaining tasks.

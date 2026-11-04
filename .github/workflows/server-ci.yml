@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: server-ci-${{ github.workflow }}-${{ github.ref }}
@@ -34,7 +35,68 @@ jobs:
         run: mvn --batch-mode dependency:resolve
 
       - name: Run checks and tests
-        run: mvn --batch-mode verify
+        id: server_verify
+        run: python ../.github/scripts/measure_build.py --label Server --artifacts 'target/*.jar' --output build-metrics.json -- mvn --batch-mode verify
+
+      - name: Upload server build metrics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-build-metrics
+          path: server/build-metrics.json
+          if-no-files-found: ignore
+
+      - name: Publish server JUnit report
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: Server tests
+          path: server/target/surefire-reports/*.xml
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Add server quality metrics to job summary
+        if: always()
+        shell: bash
+        env:
+          SERVER_VERIFY_OUTCOME: ${{ steps.server_verify.outcome }}
+        run: |
+          python - <<'PY'
+          import os
+          import csv as csv_module
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          reports = list(Path("target/surefire-reports").glob("TEST-*.xml"))
+          total = failures = errors = skipped = 0
+          for report in reports:
+              suite = ET.parse(report).getroot()
+              total += int(suite.attrib.get("tests", 0))
+              failures += int(suite.attrib.get("failures", 0))
+              errors += int(suite.attrib.get("errors", 0))
+              skipped += int(suite.attrib.get("skipped", 0))
+          test_time = sum(float(ET.parse(report).getroot().attrib.get("time", 0)) for report in reports)
+
+          coverage = "not generated"
+          csv = Path("target/site/jacoco/jacoco.csv")
+          if csv.exists():
+              with csv.open(newline="", encoding="utf-8") as source:
+                  rows = list(csv_module.DictReader(source))
+              if rows:
+                  missed = sum(int(row["LINE_MISSED"]) for row in rows)
+                  covered = sum(int(row["LINE_COVERED"]) for row in rows)
+                  coverage = f"{covered}/{missed + covered} ({covered * 100 / (missed + covered):.2f}%)" if missed + covered else "0%"
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write("## Automated server quality metrics\n\n")
+              out.write("| Metric | Result |\n|---|---|\n")
+              out.write(f"| Server tests (JUnit) | {total - failures - errors - skipped}/{total} passed |\n")
+              out.write(f"| Server test execution time | {test_time:.3f} s |\n")
+              out.write(f"| Server line coverage (JaCoCo) | {coverage} |\n")
+              out.write(f"| Maven verify (including Checkstyle) | {os.environ.get('SERVER_VERIFY_OUTCOME', 'unknown')} |\n")
+              out.write(f"| Test suites | {len(reports)} |\n")
+              out.write(f"| Skipped tests | {skipped} |\n")
+          PY
 
       - name: Upload server artifact
         uses: actions/upload-artifact@v7

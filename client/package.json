@@ -8,9 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "prepare": "cd .. && npx --no --prefix client husky client/.husky",
-    "commitlint": "commitlint --edit"
+    "commitlint": "commitlint --edit",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
@@ -19,11 +21,14 @@
     "react": "latest",
     "react-chartjs-2": "latest",
     "react-dom": "latest",
-    "react-router-dom": "latest"
+    "react-router-dom": "latest",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
+    "@playwright/test": "^1.64.1",
+    "@vitest/coverage-v8": "^2.1.9",
     "eslint": "^8.57.1",
     "eslint-config-airbnb": "^19.0.4",
     "eslint-config-prettier": "^10.1.8",
@@ -34,7 +39,6 @@
     "husky": "^9.1.7",
     "prettier": "^3.9.9",
     "vite": "latest",
-    "vitest": "^2.1.9",
-    "@vitest/coverage-v8": "^2.1.9"
+    "vitest": "^2.1.9"
   }
 }

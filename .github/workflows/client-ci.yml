@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: client-ci-${{ github.workflow }}-${{ github.ref }}
@@ -37,11 +38,13 @@ jobs:
         if: github.event_name == 'pull_request'
         run: npx --no -- commitlint --from "${{ github.event.pull_request.base.sha }}" --to "${{ github.event.pull_request.head.sha }}" --verbose
 
-      - name: Run linter when configured
+      - name: Run linter
+        id: client_lint
         run: npm run lint
 
-      - name: Run tests when configured
-        run: npm test --if-present -- --coverage
+      - name: Run tests and collect JUnit metrics
+        id: client_tests
+        run: npm test --if-present
 
       - name: Upload client coverage
         if: always()
@@ -51,8 +54,72 @@ jobs:
           path: client/coverage
           if-no-files-found: ignore
 
+      - name: Publish client JUnit report
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: Client tests
+          path: client/test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: false
+
       - name: Build client
-        run: npm run build
+        id: client_build
+        run: python ../.github/scripts/measure_build.py --label Client --artifacts 'dist/**/*' --output build-metrics.json -- npm run build
+
+      - name: Upload client build metrics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-build-metrics
+          path: client/build-metrics.json
+          if-no-files-found: ignore
+
+      - name: Add client quality metrics to job summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import xml.etree.ElementTree as ET
+          import time
+          from pathlib import Path
+
+          junit = Path("test-results/junit.xml")
+          summary = Path("coverage/coverage-summary.json")
+          rows = []
+          tests = "report not generated"
+          test_time = "report not generated"
+          if junit.exists():
+              root = ET.parse(junit).getroot()
+              suites = [root] if root.tag == "testsuite" else root.findall(".//testsuite")
+              total = failures = errors = skipped = 0
+              seconds = 0.0
+              for suite in suites:
+                  total += int(suite.attrib.get("tests", 0))
+                  failures += int(suite.attrib.get("failures", 0))
+                  errors += int(suite.attrib.get("errors", 0))
+                  skipped += int(suite.attrib.get("skipped", suite.attrib.get("disabled", 0)))
+                  seconds += float(suite.attrib.get("time", 0))
+              tests = f"{total - failures - errors - skipped}/{total} passed"
+              test_time = f"{seconds:.3f} s"
+          if summary.exists():
+              lines = json.loads(summary.read_text())["total"]["lines"]
+              rows.append(("Client line coverage", f"{lines['covered']}/{lines['total']} ({lines['pct']}%)"))
+          rows.append(("Client tests (JUnit)", tests))
+          rows.append(("Client test execution time", test_time))
+          rows.append(("Test report", "generated" if junit.exists() else "not generated"))
+          rows.append(("Coverage report", "generated" if summary.exists() else "not generated"))
+          rows.append(("ESLint", "${{ steps.client_lint.outcome }}"))
+          rows.append(("Client build", "${{ steps.client_build.outcome }}"))
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as out:
+              out.write("## Automated client quality metrics\n\n")
+              out.write("| Metric | Result |\n|---|---|\n")
+              for name, value in rows:
+                  out.write(f"| {name} | {value} |\n")
+          PY
 
       - name: Upload client build
         uses: actions/upload-artifact@v7
@@ -60,3 +127,11 @@ jobs:
           name: client-build
           path: client/dist
           if-no-files-found: error
+
+      - name: Upload client test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-test-results
+          path: client/test-results
+          if-no-files-found: ignore
