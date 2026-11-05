@@ -71,7 +71,12 @@ def junit_metrics(path):
 
 unit = junit_metrics(ROOT / 'client/test-results/junit.xml')
 e2e = junit_metrics(ROOT / 'client/test-results/e2e-junit.xml')
-server = junit_metrics(next((ROOT / 'server/target/surefire-reports').glob('TEST-*.xml')))
+server_reports = list((ROOT / 'server/target/surefire-reports').glob('TEST-*.xml'))
+server = tuple(sum(junit_metrics(path)[i] for path in server_reports) for i in range(4))
+live = junit_metrics(ROOT / 'client/test-results/live-junit.xml')
+for name, metrics in [('Vitest', unit), ('Playwright', e2e), ('JUnit', server), ('Live', live)]:
+    if metrics[1] or metrics[2] or metrics[3]:
+        raise SystemExit(f'{name}: failed or skipped tests; complete the full test run before reporting success.')
 coverage = json.loads((ROOT / 'client/coverage/coverage-summary.json').read_text())
 with (ROOT / 'server/target/site/jacoco/jacoco.csv').open(newline='') as source:
     jacoco = list(csv.DictReader(source))
@@ -90,11 +95,12 @@ for text in [
     document.add_paragraph(text, 'List Paragraph')
 
 heading('2. Выбор и настройка среды тестирования')
-paragraph('Объект тестирования — система учёта публикаций сотрудников. В лабораторной №6 реализован клиентский прототип задач 3.1, 3.2 и 4.2: форма с валидацией, операции с публикациями и фильтрация. В данной работе автоматизирована проверка этих задач и дополнены модульные проверки серверного сервиса.')
+paragraph('Объект тестирования — обновлённая система учёта публикаций сотрудников. Проверяются задачи 3.1, 3.2 и 4.2 (форма, CRUD и фильтрация), а также регистрация, вход, восстановление сессии и права USER/ADMIN. Каталог подключён к REST API и PostgreSQL. Объём работы ограничен реализованными задачами; будущие функции из плана проекта не заявляются готовыми.')
 table(['Уровень', 'Средства', 'Назначение'], [
     ['Клиентские модули', 'Vitest, V8 coverage', 'Проверка схемы Zod, localStorage и HTTP-обёртки'],
     ['Пользовательские сценарии', 'Playwright, Chromium', 'Действия через интерфейс в настоящем браузере'],
-    ['Серверные модули', 'JUnit 5, Mockito, JaCoCo', 'Изолированная проверка PublicationService'],
+    ['Серверные проверки', 'JUnit 5, Mockito, MockMvc, JaCoCo', 'Сервис, контроллеры, валидация, JWT и разграничение доступа'],
+    ['Интеграция', 'Spring Boot, HTTP, PostgreSQL, Playwright', 'Настоящая БД и полный пользовательский сценарий без подмены API'],
     ['Автоматический запуск', 'GitHub Actions', 'Проверки при push и pull request, сохранение отчётов'],
 ])
 paragraph('Существующие Vitest, JUnit и workflow сохранены и расширены. Для Playwright добавлены отдельный конфигурационный файл и каталог client/e2e. Vitest ограничен тестами src/**/*.test.{js,jsx}, поэтому браузерные тесты не попадают в модульный прогон. Playwright автоматически запускает Vite; каждый сценарий использует отдельный контекст браузера и независимое localStorage.')
@@ -106,43 +112,49 @@ table(['Задача', 'Проверки', 'Ожидаемый результа�
     ['3.2. Добавление и изменение', 'Создание, перезагрузка, редактирование и повторная перезагрузка', 'Созданная запись и изменения сохраняются'],
     ['3.2. Отмена и удаление', 'Отмена редактирования, отмена и подтверждение удаления', 'Отмена сохраняет исходную запись; подтверждение удаляет её окончательно'],
     ['4.2. Фильтрация', 'Год, автор, тип отдельно и совместно; регистр и пробелы автора; сброс и пустой результат', 'Отображаются только подходящие записи, сброс возвращает весь список'],
-    ['Устойчивость хранения', 'Повреждённые данные, ошибки чтения и записи localStorage', 'Восстановлены исходные данные либо показана ошибка без ложного сохранения'],
+    ['Устойчивость API', 'Повтор загрузки, 400/403/404/503 при операциях', 'Ошибка показана; несохранённые данные не выдаются за сохранённые, повтор доступен'],
+    ['Авторизация', 'Регистрация, вход, выход, восстановление, истечение сессии, профиль и права USER/ADMIN', 'Корректная навигация, Bearer-заголовок и защита операций'],
+    ['PostgreSQL', 'HTTP CRUD и SQL-чтение результата через JPA, вход, валидация и запрет чужих операций', 'Данные действительно записаны, изменены и удалены'],
     ['Серверный сервис', 'Получение списка, поиск, отсутствие записи, сохранение и удаление', 'Корректные результаты и вызовы репозитория; для отсутствующей записи — текущее исключение сервиса'],
 ])
-paragraph('Клиентские модульные тесты находятся в publicationSchema.test.js, prototypeStore.test.js и publications.test.js. Шесть браузерных сценариев реализованы в client/e2e/catalog.spec.js. Серверные проверки находятся в PublicationServiceTest.java. Репозиторий сервера и HTTP-клиент заменяются mock-объектами только в модульных тестах; браузерные сценарии работают с реальным интерфейсом и localStorage.')
+paragraph('Клиентские модульные проверки находятся в publicationSchema.test.js, publications.test.js, http.test.js и сохранённом prototypeStore.test.js старого прототипа. Обычные браузерные тесты client/e2e проверяют интерфейс с подготовленными ответами API. PublicationControllerTest использует настоящие контроллер, сервис каталога, валидацию и Spring Security, подменяя только репозитории. PublicationIntegrationTest выполняет запросы по HTTP к Spring Boot и настоящей PostgreSQL. Отдельный client/e2e-live/publication.spec.js выполняет пользовательский сценарий без перехвата API.')
 
 heading('4. Автоматические отчёты и непрерывная интеграция')
 paragraph('Клиентский workflow выполняет ESLint, Vitest и сборку; серверный — Maven verify с JUnit, Checkstyle и JaCoCo. Добавлен e2e-ci.yml: установка зависимостей и Chromium, запуск Playwright и выгрузка результатов. Все workflow запускаются при push и pull request. Браузерные отчёты сохраняются на 14 дней; шаг выгрузки выполняется также при падении тестов. Непройденные тесты завершают соответствующую job ошибкой.')
+paragraph('Добавлен integration-ci.yml с PostgreSQL 16 service: Maven clean verify, затем Playwright с настоящим сервером и базой, выгрузка JUnit, JaCoCo, HTML и диагностики. Используется отдельная одноразовая publication_system_test с create-drop. Рабочая база publication_system не используется. Без TEST_DB_URL интеграционный JUnit-тест пропускается; полный прогон и CI задают URL и выполняют его без пропуска. Live-конфигурация принимает только адрес тестовой БД, сама запускает API на 18080 и Vite на 5173 и останавливает их после проверки.')
 table(['Средство', 'Автоматический отчёт'], [
     ['Vitest', 'client/test-results/junit.xml; client/coverage/index.html; coverage-summary.json'],
     ['Playwright', 'client/playwright-report/index.html; client/test-results/e2e-junit.xml'],
     ['Диагностика Playwright', 'При падении — скриншот и trace в client/test-results/e2e'],
     ['JUnit / JaCoCo', 'server/target/surefire-reports; server/target/site/jacoco/index.html'],
+    ['Live Playwright', 'client/playwright-live-report/index.html; client/test-results/live-junit.xml'],
     ['GitHub Actions', 'Существующие сводки клиента/сервера и артефакты; отдельный артефакт browser-test-reports'],
 ])
 paragraph('Команды запуска из корня проекта в PowerShell: npm.cmd --prefix client ci; npm.cmd --prefix client exec -- playwright install chromium; npm.cmd test; npm.cmd --prefix client run test:e2e; npm.cmd --prefix client run lint; npm.cmd run build; mvn.cmd -f server/pom.xml verify. Для просмотра браузерного отчёта: npm.cmd --prefix client run test:e2e:report.')
 
 heading('5. Результаты проверки')
-paragraph('Локальная проверка выполнена 04.11.2026 в Windows, Node.js и Maven с JDK 21 (целевая версия Java проекта — 17). Ниже приведены результаты фактически выполненных прогонов. Запуск workflow на GitHub в рамках данной работы не выполнялся; конфигурация подготовлена для следующего push.')
+paragraph('Локальная проверка выполнена 05.11.2026 в Windows с Maven/JDK 21 (целевая версия Java — 17), Node.js, Chromium и PostgreSQL 16. Ниже приведены результаты фактических прогонов. GitHub Actions в рамках данной работы не запускался; workflow подготовлены для следующего push.')
 table(['Проверка', 'Всего', 'Ошибки / пропуски', 'Результат'], [
     ['Vitest', unit[0], f'{unit[1] + unit[2]} / {unit[3]}', 'Успешно'],
     ['Playwright / Chromium', e2e[0], f'{e2e[1] + e2e[2]} / {e2e[3]}', 'Успешно'],
-    ['JUnit / Mockito', server[0], f'{server[1] + server[2]} / {server[3]}', 'Успешно'],
+    ['JUnit / MockMvc / PostgreSQL', server[0], f'{server[1] + server[2]} / {server[3]}', 'Успешно'],
+    ['Live Playwright / API / PostgreSQL', live[0], f'{live[1] + live[2]} / {live[3]}', 'Успешно'],
     ['ESLint', '—', '0', 'Успешно'],
     ['Checkstyle', '—', '0', 'Успешно'],
     ['Vite build / Maven verify', '—', '—', 'Успешно'],
 ])
-paragraph(f"Покрытие строк клиента модульными тестами — {coverage['total']['lines']['pct']}% (40 из 149). Для publicationSchema.js, prototypeStore.js и publications.js покрытие строк составляет 100%. Общее серверное покрытие JaCoCo — {covered / total * 100:.2f}% ({covered} из {total} строк), для PublicationService — 100%. Низкое общее покрытие отражает наличие компонентов и серверных классов без модульных тестов. Браузерные проверки не включаются в показатель Vitest, поэтому этот процент не описывает полноту пользовательских сценариев.")
-picture('playwright.png', 'Рисунок 1 — Автоматический HTML-отчёт Playwright: шесть успешных сценариев')
+paragraph(f"Покрытие строк клиента модульными тестами — {coverage['total']['lines']['pct']}% ({coverage['total']['lines']['covered']} из {coverage['total']['lines']['total']}). Для HTTP-клиента, схемы публикации, хранилища прототипа и HTTP-обёртки покрытие строк составляет 100%. Браузерные проверки компонентов не входят в метрику Vitest. Общее серверное покрытие JaCoCo — {covered / total * 100:.2f}% ({covered} из {total} строк); для PublicationCatalogService и PublicationController — 100%. Сам по себе процент покрытия не подтверждает все возможные сценарии: соответствие реализованным задачам приведено в таблице проверок.")
+picture('playwright.png', f'Рисунок 1 — HTML-отчёт Playwright: {e2e[0]} успешных сценариев')
 picture('coverage.png', 'Рисунок 2 — Отчёт покрытия клиентского кода Vitest')
 picture('jacoco.png', 'Рисунок 3 — Отчёт покрытия серверного кода JaCoCo')
+picture('live.png', 'Рисунок 4 — Полный браузерный сценарий с настоящими API и PostgreSQL')
 
 heading('6. Работа с Git Flow')
-paragraph('Изменения выполнены в существующей ветке feature/tests по согласованию с пользователем. Следующий этап после проверки изменений — коммит и pull request в develop с успешным CI. При подготовке отдельного релиза используется ветка release/<версия>, слияние в main с тегом и обратное слияние в develop. Прямое слияние feature/tests в main не выполнялось.')
+paragraph('Новые проверки выполнены в feature/test-coverage, созданной от feature/auth-postgres, поскольку зависят от обновлённой функциональности. Порядок интеграции — сначала feature/auth-postgres в develop, затем feature/test-coverage в develop через PR с успешным CI. Релиз готовится через release/<версия> с последующим слиянием в main, тегом и возвратом в develop. Прямого слияния feature в main не выполнялось.')
 
 heading('Выводы по работе')
-paragraph('Для проекта настроены модульные и браузерные проверки, а также автоматическое формирование отчётов о результатах и покрытии кода. Успешно выполнены 23 клиентских модульных теста, 6 пользовательских сценариев и 5 серверных модульных тестов. Проверки подтверждают реализацию задач прототипа: валидацию формы, операции с публикациями и фильтрацию.')
-paragraph('Граница проверки — клиентский прототип с localStorage и изолированный серверный сервис. Полный путь браузер → REST API → PostgreSQL, авторизация, профиль и администрирование не подтверждены данными тестами. При дальнейшем развитии проекта необходимо добавить интеграционные проверки API, базы данных и разграничения доступа. Подробные команды и соответствие требований тестам приведены в docs/testing.md.')
+paragraph(f'Успешно выполнены {unit[0]} клиентских модульных теста, {e2e[0]} браузерных проверок с подготовленными ответами API, {server[0]} серверных проверок и {live[0]} полный браузерный сценарий. Настроены среда тестирования, автоматический запуск и отчёты. Проверяются текущие задачи формы, CRUD, фильтрации, регистрации, сессии и разграничения доступа, включая настоящее хранение в PostgreSQL.')
+paragraph('Полный браузерный сценарий подтверждает регистрацию, создание и редактирование публикации, сохранение после перезагрузки и нового входа, а также удаление. Это не означает проверку всех комбинаций входных данных. Загрузка файлов, поиск и пагинация, полноценная админ-панель и аналитика ещё не реализованы и в объём подтверждённых задач не включены. Команды и матрица требований приведены в docs/testing.md.')
 reports_directory = ROOT.parent / 'publication-system-reports'
 reports_directory.mkdir(parents=True, exist_ok=True)
 target = reports_directory / 'Lab7_report_completed.docx'

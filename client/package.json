@@ -12,7 +12,8 @@
     "prepare": "cd .. && npx --no --prefix client husky client/.husky",
     "commitlint": "commitlint --edit",
     "test:e2e": "playwright test",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:live": "playwright test --config playwright.live.config.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",

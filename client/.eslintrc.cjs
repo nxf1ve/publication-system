@@ -14,7 +14,7 @@ module.exports = {
     react: { version: 'detect' },
   },
   overrides: [{
-    files: ['playwright.config.js', 'e2e/**/*.js'],
+    files: ['playwright*.config.js', 'e2e/**/*.js', 'e2e-live/**/*.js'],
     env: { node: true },
     rules: {
       'import/no-extraneous-dependencies': ['error', { devDependencies: true }],

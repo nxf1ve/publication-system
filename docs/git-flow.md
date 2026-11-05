@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | `feature/auth-postgres` | JWT-регистрация и вход, восстановление сессии, каталог через PostgreSQL, права владельца/ADMIN, инструкции запуска | `develop` |
 | `feature/tests` | Тесты клиентских модулей и серверного сервиса, 8 браузерных сценариев, Playwright CI, документация и отчеты | `develop` |
+| `feature/test-coverage` | Расширенные тесты обновлённого каталога/JWT, PostgreSQL-интеграция, live Playwright и отчёт ЛР7; основана на `feature/auth-postgres` | `develop` после интеграции `feature/auth-postgres` |
 
 `feature/tests` включает `feature/auth-postgres`: ее браузерные проверки требуют
 нового каталога и авторизации. Обе ветки синхронизированы с `develop`.
@@ -36,6 +37,11 @@ mvn.cmd -B -f server/pom.xml verify
 Playwright использует подготовленные в тестах ответы API; эти результаты
 не являются проверкой работающего PostgreSQL. Для такой проверки предусмотрен
 `scripts/check_postgres.py` при запущенном API.
+
+На следующем этапе в `feature/test-coverage` проверки расширены до 32 клиентских,
+18 браузерных с API-фикстурами, 32 серверных (включая настоящую PostgreSQL) и одного
+полного браузерного сценария с API и БД. Добавлен workflow `PostgreSQL integration`.
+Актуальный порядок и команды проверок — в [testing.md](testing.md).
 
 Коммиты используют Conventional Commits: `feat`, `test`, `ci`, `docs`, `chore`.
 Собранные файлы, результаты тестов, `node_modules`, `.env` и временные файлы

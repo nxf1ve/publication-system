@@ -8,6 +8,7 @@ dist/
 coverage/
 test-results/
 playwright-report/
+playwright-live-report/
 
 # Local environment files
 .env

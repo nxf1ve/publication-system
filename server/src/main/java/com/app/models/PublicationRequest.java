@@ -16,6 +16,12 @@ public record PublicationRequest(
         @NotBlank @Pattern(regexp = "Статья|Монография|Доклад") String type,
         @NotBlank @Pattern(regexp = "Информационные системы|Прикладная математика|Вычислительная техника|Программная инженерия|Экономика и управление") String department,
         @NotBlank @Size(max = 200) String owner) {
+    public PublicationRequest {
+        title = title == null ? null : title.trim();
+        authors = authors == null ? null : authors.trim();
+        owner = owner == null ? null : owner.trim();
+    }
+
     @AssertTrue(message = "Year must not exceed next year")
     public boolean isYearValid() { return year == null || year <= Year.now().getValue() + 1; }
 }

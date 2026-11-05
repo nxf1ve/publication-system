@@ -122,3 +122,55 @@ test('reports API failure without displaying an unsaved record', async ({ page }
   await page.reload();
   await expect(page.getByRole('article')).toHaveCount(3);
 });
+
+test('retries a failed initial load', async ({ page }) => {
+  let fail = true;
+  await page.route('**/api/publications', route => fail
+    ? route.fulfill({ status: 503, json: {} }) : route.fallback());
+  await page.reload();
+  await expect(page.getByRole('alert')).toContainText('Не удалось загрузить публикации');
+  await expect(page.getByText('Публикации не найдены.')).toHaveCount(0);
+  fail = false;
+  await page.getByRole('button', { name: 'Повторить' }).click();
+  await expect(page.getByRole('article')).toHaveCount(3);
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+[[400, 'Сервер отклонил данные'], [403, 'Нет прав'], [404, 'Публикация больше не существует']].forEach(([status, message]) => {
+  test(`preserves records and form when update or deletion returns ${status}`, async ({ page }) => {
+    const card = page.getByRole('article').first();
+    await card.getByRole('button', { name: 'Редактировать' }).click();
+    await page.locator('form').getByLabel('Название').fill('Не сохранено');
+    await page.route('**/api/publications/1', route => route.fulfill({ status, json: {} }));
+    await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText(message);
+    await expect(card.getByRole('heading')).toHaveText('Цифровая трансформация университета');
+    await expect(page.locator('form').getByLabel('Название')).toHaveValue('Не сохранено');
+    await expect(page.getByRole('button', { name: 'Сохранить', exact: true })).toBeEnabled();
+    page.once('dialog', dialog => dialog.accept());
+    await card.getByRole('button', { name: 'Удалить', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText(message);
+    await expect(page.getByRole('article')).toHaveCount(3);
+    await expect(card.getByRole('button', { name: 'Удалить', exact: true })).toBeEnabled();
+  });
+});
+
+test('hides foreign record actions for USER and shows them for ADMIN', async ({ page }) => {
+  await page.route('**/api/auth/me', route => route.fulfill({ json: { id: 2, username: 'other', role: 'USER' } }));
+  await page.reload();
+  await expect(page.getByRole('article')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Редактировать' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Удалить', exact: true })).toHaveCount(0);
+  await page.route('**/api/auth/me', route => route.fulfill({ json: { id: 3, username: 'admin', role: 'ADMIN' } }));
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Редактировать' })).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Удалить', exact: true })).toHaveCount(3);
+  await expect(page.getByRole('link', { name: 'Администрирование' })).toBeVisible();
+});
+
+test('expires the session when the catalog API returns 401', async ({ page }) => {
+  await page.route('**/api/publications', route => route.fulfill({ status: 401, json: {} }));
+  await page.reload();
+  await expect(page).toHaveURL(/\/login$/);
+  expect(await page.evaluate(() => localStorage.getItem('access_token'))).toBeNull();
+});

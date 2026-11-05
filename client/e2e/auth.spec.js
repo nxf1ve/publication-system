@@ -37,3 +37,30 @@ test('shows invalid credentials and clears expired session', async ({ page }) =>
   await expect(page).toHaveURL(/\/login$/);
   expect(await page.evaluate(() => localStorage.getItem('access_token'))).toBeNull();
 });
+
+[[409, 'Этот логин уже занят.'], [400, 'Проверьте логин и пароль.'], [503, 'Не удалось войти. Проверьте доступность сервера.']].forEach(([status, message]) => {
+  test(`reports registration error ${status} and allows retry`, async ({ page }) => {
+    await page.route('**/api/auth/register', route => route.fulfill({ status, json: {} }));
+    await page.goto('/login');
+    await page.getByRole('button', { name: 'Создать аккаунт' }).click();
+    await page.getByLabel('Логин', { exact: true }).fill('newemployee');
+    await page.getByLabel('Пароль', { exact: true }).fill('password123');
+    await page.getByRole('button', { name: 'Зарегистрироваться', exact: true }).click();
+    await expect(page.getByRole('alert')).toHaveText(message);
+    await expect(page.getByRole('button', { name: 'Зарегистрироваться', exact: true })).toBeEnabled();
+    expect(await page.evaluate(() => localStorage.getItem('access_token'))).toBeNull();
+  });
+});
+
+test('keeps token on a temporary restoration failure and links username to profile', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('access_token', 'test-token'));
+  await page.route('**/api/auth/me', route => route.fulfill({ status: 503, json: {} }));
+  await page.goto('/profile');
+  await expect(page.getByRole('alert')).toContainText('Не удалось восстановить сессию');
+  expect(await page.evaluate(() => localStorage.getItem('access_token'))).toBe('test-token');
+  await page.route('**/api/auth/me', route => route.fulfill({ json: user }));
+  await page.reload();
+  await page.getByRole('link', { name: 'employee', exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(page.getByText('Логин: employee')).toBeVisible();
+});
